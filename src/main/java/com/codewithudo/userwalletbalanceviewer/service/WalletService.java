@@ -1,6 +1,7 @@
 package com.codewithudo.userwalletbalanceviewer.service;
 
 import com.codewithudo.userwalletbalanceviewer.dto.Wallet;
+import com.codewithudo.userwalletbalanceviewer.dto.WalletsResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
@@ -18,7 +19,6 @@ public class WalletService {
 
     private final RestTemplate restTemplate;
 
-    // Injects the secret key from application.properties
     @Value("${quidax.api.secret-key}")
     private String secretKey;
 
@@ -27,23 +27,28 @@ public class WalletService {
     }
 
     public List<Wallet> getUserWallets(String userId) {
-        String url = "https://api.quidax.com/api/v1/users/" + userId + "/wallets";
+        String url = "https://app.quidax.io/api/v1/users/" + userId + "/wallets";
 
-        // 1. Create Headers
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + secretKey);
 
-        // 2. Create an HTTP Entity
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
-        // 3. Execute the authenticated request
-        ResponseEntity<List<Wallet>> response = restTemplate.exchange(
+        // 1. Change the expected response type to our new wrapper
+        ResponseEntity<WalletsResponse> response = restTemplate.exchange(
                 url,
                 HttpMethod.GET,
-                entity, // Pass the entity with the headers
+                entity,
                 new ParameterizedTypeReference<>() {}
         );
 
-        return response.getBody();
+        WalletsResponse body = response.getBody();
+
+        // 2. Unwrap the list of wallets from the 'data' field
+        if (body != null && "success".equals(body.getStatus())) {
+            return body.getData();
+        }
+
+        return Collections.emptyList();
     }
 }
